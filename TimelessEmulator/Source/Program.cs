@@ -26,19 +26,9 @@ public static class Program
         if (!DataManager.Initialize())
             ExitWithError("Failed to initialize the [yellow]data manager[/].");
 
-        String[] skills = new String[] 
-        //{"Melding", "Nimbleness", "Tolerance", "Undertaker", "Vampirism"}
-        //{"Essence Extraction", "Quick Recovery", "Anointed Flesh", "Asylum"}
-        //{"Essence Extraction", "Quick Recovery", "Anointed Flesh", "Asylum", "Arcanist's Dominion"}
-        //{"Overcharge", "Light of Divinity", "Holy Dominion", "Divine Fervour", "Faith and Steel", "Devotion", "Endurance"}
-        //{"Overcharge", "Light of Divinity", "Holy Dominion", "Divine Fervour"}
-        //{"Overcharge", "Light of Divinity", "Holy Dominion", "Divine Fervour", "Divine Judgement", "Divine Wrath"}
-        {"Overcharge", "Light of Divinity", "Holy Dominion", "Divine Fervour", "Divine Judgement", "Divine Wrath", "Devotion", "Endurance", "Faith and Steel"}
-        ;
+        String[] skills = GetPassivesToTransform();
 
-        ArrayList desired = new ArrayList()
-        {"Slum Lord", "Eternal Fervour"}
-        ;
+        String[] desired = GetDesiredPassives();
 
         for (uint seed = 2000; seed <= 160000; seed = seed +20) {
             ArrayList matches = new ArrayList();
@@ -73,6 +63,34 @@ public static class Program
         TimelessJewelConqueror timelessJewelConqueror = new TimelessJewelConqueror(1, 0);
 
         return new TimelessJewel(alternateTreeVersion, timelessJewelConqueror, timelessJewelSeed);
+    }
+
+    private static string[] GetPassivesToTransform() {
+        TextPrompt<String> timelessJewelLocationPrompt = new TextPrompt<String>($"[green]Enter a comma separated (case sensitive) list of Notables to check (e.g. Overcharged,Endurance):[/]")
+            .Validate((String input) =>
+            {
+                string[] skills = input.Split(",");
+
+                for (int index = 0; index < skills.Length; index++) {
+                    PassiveSkill passiveSkill = DataManager.GetPassiveSkillByFuzzyValue(skills[index]);
+
+                    if (passiveSkill == null)
+                        return ValidationResult.Error($"[red]Error[/]: Unable to find [yellow]passive skill[/] `{skills[index]}`.");
+
+                    if (!DataManager.IsPassiveSkillValidForAlteration(passiveSkill))
+                        return ValidationResult.Error($"[red]Error[/]: The [yellow]passive skill[/] `{skills[index]}` is not valid for alteration.");
+                }
+
+                return ValidationResult.Success();
+            });
+
+        return AnsiConsole.Prompt(timelessJewelLocationPrompt).Split(",");
+    }
+
+    private static string[] GetDesiredPassives() {
+        TextPrompt<string> timelessPassivePrompt = new TextPrompt<string>($"[green]Enter a comma separated (case sensitive) list of Notables desired (e.g. Slum Lord,Axiom Warden)[/]");
+
+        return AnsiConsole.Prompt(timelessPassivePrompt).Split(",");
     }
 
     private static void WaitForExit()
