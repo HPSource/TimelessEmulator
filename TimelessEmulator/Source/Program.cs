@@ -20,7 +20,7 @@ public static class Program
     {
         Console.Title = $"{Settings.ApplicationName} Ver. {Settings.ApplicationVersion}";
 
-        AnsiConsole.MarkupLine("Hello, [green]Henry[/]!");
+        AnsiConsole.MarkupLine("Hello, [green]Exile[/]!");
         AnsiConsole.MarkupLine("Loading [green]data files[/]...");
 
         if (!DataManager.Initialize())
