@@ -20,7 +20,7 @@ public static class Program
     {
         Console.Title = $"{Settings.ApplicationName} Ver. {Settings.ApplicationVersion}";
 
-        AnsiConsole.MarkupLine("Hello, [green]Henry[/]!");
+        AnsiConsole.MarkupLine("Hello, [green]Exile[/]!");
         AnsiConsole.MarkupLine("Loading [green]data files[/]...");
 
         if (!DataManager.Initialize())
@@ -29,6 +29,8 @@ public static class Program
         String[] skills = GetPassivesToTransform();
 
         String[] desired = GetDesiredPassives();
+
+        int numberMatches = GetNumberOfMatches();
 
         for (uint seed = 2000; seed <= 160000; seed = seed +20) {
             ArrayList matches = new ArrayList();
@@ -44,7 +46,7 @@ public static class Program
                 }
             }
 
-            if (matches.Count > 2) {
+            if (matches.Count >= numberMatches) {
                 String joined = String.Join("\n", matches.Cast<string>().ToArray());
                 AnsiConsole.MarkupLine($"([red]{matches.Count}[/]) [yellow]{seed}[/]:\n{joined}");
             }
@@ -66,7 +68,7 @@ public static class Program
     }
 
     private static string[] GetPassivesToTransform() {
-        TextPrompt<String> timelessJewelLocationPrompt = new TextPrompt<String>($"[green]Enter a comma separated (case sensitive) list of Notables to check (e.g. Overcharged,Endurance):[/]")
+        TextPrompt<String> timelessJewelLocationPrompt = new TextPrompt<String>($"[green]Enter a comma separated (case sensitive) list of Notables to check (e.g. Overcharge,Endurance):[/]")
             .Validate((String input) =>
             {
                 string[] skills = input.Split(",");
@@ -91,6 +93,12 @@ public static class Program
         TextPrompt<string> timelessPassivePrompt = new TextPrompt<string>($"[green]Enter a comma separated (case sensitive) list of Notables desired (e.g. Slum Lord,Axiom Warden)[/]");
 
         return AnsiConsole.Prompt(timelessPassivePrompt).Split(",");
+    }
+
+    private static int GetNumberOfMatches(){
+        TextPrompt<int> numberPrompt = new TextPrompt<int>("[green]Enter the number of matches that are desired (e.g. 1 for at least 1 match)[/]");
+
+        return AnsiConsole.Prompt(numberPrompt);
     }
 
     private static void WaitForExit()
