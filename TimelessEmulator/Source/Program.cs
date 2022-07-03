@@ -20,211 +20,109 @@ public static class Program
     {
         Console.Title = $"{Settings.ApplicationName} Ver. {Settings.ApplicationVersion}";
 
-        AnsiConsole.MarkupLine("Hello, [green]exile[/]!");
+        AnsiConsole.MarkupLine("Hello, [green]Henry[/]!");
         AnsiConsole.MarkupLine("Loading [green]data files[/]...");
 
         if (!DataManager.Initialize())
             ExitWithError("Failed to initialize the [yellow]data manager[/].");
 
-        PassiveSkill passiveSkill = GetPassiveSkillFromInput();
+        uint timelessJewelSeed = GetSeedFromConsole();
 
-        if (passiveSkill == null)
-            ExitWithError("Failed to get the [yellow]passive skill[/] from input.");
+        String location = GetJewelLocationFromConsole();
 
-        TimelessJewel timelessJewel = GetTimelessJewelFromInput();
-
-        if (timelessJewel == null)
-            ExitWithError("Failed to get the [yellow]timeless jewel[/] from input.");
-
-        AnsiConsole.WriteLine();
-
-        AlternateTreeManager alternateTreeManager = new AlternateTreeManager(passiveSkill, timelessJewel);
-
-        bool isPassiveSkillReplaced = alternateTreeManager.IsPassiveSkillReplaced();
-
-        AnsiConsole.MarkupLine($"[green]Is Passive Skill Replaced[/]: {isPassiveSkillReplaced}");
-
-        if (isPassiveSkillReplaced)
-        {
-            AlternatePassiveSkillInformation alternatePassiveSkillInformation = alternateTreeManager.ReplacePassiveSkill();
-
-            AnsiConsole.MarkupLine($"[green]Alternate Passive Skill[/]: [yellow]{alternatePassiveSkillInformation.AlternatePassiveSkill.Name}[/] ([yellow]{alternatePassiveSkillInformation.AlternatePassiveSkill.Identifier}[/])");
-
-            for (int i = 0; i < alternatePassiveSkillInformation.AlternatePassiveSkill.StatIndices.Count; i++)
-            {
-                uint statIndex = alternatePassiveSkillInformation.AlternatePassiveSkill.StatIndices.ElementAt(i);
-                uint statRoll = alternatePassiveSkillInformation.StatRolls.ElementAt(i).Value;
-
-                AnsiConsole.MarkupLine($"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]");
+        if (location.Equals("All")) {
+            foreach (KeyValuePair<String, String[]> pair in keystones) {
+                AnsiConsole.MarkupLine($"[red]{pair.Key}[/]");
+                ComputeSkillTreeTransformations(pair.Value, timelessJewelSeed);        
             }
-
-            PrintAlternatePassiveAdditionInformations(alternatePassiveSkillInformation.AlternatePassiveAdditionInformations);
+        } else {
+            AnsiConsole.MarkupLine($"[red]{location}[/]");
+            ComputeSkillTreeTransformations(keystones.First(q => (q.Key.Equals(location))).Value, timelessJewelSeed);
         }
-        else
-        {
-            IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations = alternateTreeManager.AugmentPassiveSkill();
-
-            PrintAlternatePassiveAdditionInformations(alternatePassiveAdditionInformations);
-        }
-
+        
         WaitForExit();
     }
 
-    private static PassiveSkill GetPassiveSkillFromInput()
+    private static TimelessJewel GetTimelessJewelFromInput(uint timelessJewelSeed)
     {
-        TextPrompt<string> passiveSkillTextPrompt = new TextPrompt<string>("[green]Passive Skill[/]:")
-            .Validate((string input) =>
-            {
-                PassiveSkill passiveSkill = DataManager.GetPassiveSkillByFuzzyValue(input);
-
-                if (passiveSkill == null)
-                    return ValidationResult.Error($"[red]Error[/]: Unable to find [yellow]passive skill[/] `{input}`.");
-
-                if (!DataManager.IsPassiveSkillValidForAlteration(passiveSkill))
-                    return ValidationResult.Error($"[red]Error[/]: The [yellow]passive skill[/] `{input}` is not valid for alteration.");
-
-                return ValidationResult.Success();
-            });
-
-        string passiveSkillInput = AnsiConsole.Prompt(passiveSkillTextPrompt);
-
-        PassiveSkill passiveSkill = DataManager.GetPassiveSkillByFuzzyValue(passiveSkillInput);
-
-        AnsiConsole.MarkupLine($"[green]Found Passive Skill[/]: [yellow]{passiveSkill.Name}[/] ([yellow]{passiveSkill.Identifier}[/])");
-
-        return passiveSkill;
-    }
-
-    private static TimelessJewel GetTimelessJewelFromInput()
-    {
-        Dictionary<uint, string> timelessJewelTypes = new Dictionary<uint, string>()
-        {
-            { 1, "Glorious Vanity" },
-            { 2, "Lethal Pride" },
-            { 3, "Brutal Restraint" },
-            { 4, "Militant Faith" },
-            { 5, "Elegant Hubris" }
-        };
-
-        Dictionary<uint, Dictionary<string, TimelessJewelConqueror>> timelessJewelConquerors = new Dictionary<uint, Dictionary<string, TimelessJewelConqueror>>()
-        {
-            {
-                1, new Dictionary<string, TimelessJewelConqueror>()
-                {
-                    { "Xibaqua", new TimelessJewelConqueror(1, 0) },
-                    { "[springgreen3]Zerphi (Legacy)[/]", new TimelessJewelConqueror(2, 0) },
-                    { "Ahuana", new TimelessJewelConqueror(2, 1) },
-                    { "Doryani", new TimelessJewelConqueror(3, 0) }
-                }
-            },
-            {
-                2, new Dictionary<string, TimelessJewelConqueror>()
-                {
-                    { "Kaom", new TimelessJewelConqueror(1, 0) },
-                    { "Rakiata", new TimelessJewelConqueror(2, 0) },
-                    { "[springgreen3]Kiloava (Legacy)[/]", new TimelessJewelConqueror(3, 0) },
-                    { "Akoya", new TimelessJewelConqueror(3, 1) }
-                }
-            },
-            {
-                3, new Dictionary<string, TimelessJewelConqueror>()
-                {
-                    { "[springgreen3]Deshret (Legacy)[/]", new TimelessJewelConqueror(1, 0) },
-                    { "Balbala", new TimelessJewelConqueror(1, 1) },
-                    { "Asenath", new TimelessJewelConqueror(2, 0) },
-                    { "Nasima", new TimelessJewelConqueror(3, 0) }
-                }
-            },
-            {
-                4, new Dictionary<string, TimelessJewelConqueror>()
-                {
-                    { "[springgreen3]Venarius (Legacy)[/]", new TimelessJewelConqueror(1, 0) },
-                    { "Maxarius", new TimelessJewelConqueror(1, 1) },
-                    { "Dominus", new TimelessJewelConqueror(2, 0) },
-                    { "Avarius", new TimelessJewelConqueror(3, 0) }
-                }
-            },
-            {
-                5, new Dictionary<string, TimelessJewelConqueror>()
-                {
-                    { "Cadiro", new TimelessJewelConqueror(1, 0) },
-                    { "Victario", new TimelessJewelConqueror(2, 0) },
-                    { "[springgreen3]Chitus (Legacy)[/]", new TimelessJewelConqueror(3, 0) },
-                    { "Caspiro", new TimelessJewelConqueror(3, 1) }
-                }
-            }
-        };
-
-        Dictionary<uint, (uint minimumSeed, uint maximumSeed)> timelessJewelSeedRanges = new Dictionary<uint, (uint minimumSeed, uint maximumSeed)>()
-        {
-            { 1, (100, 8000) },
-            { 2, (10000, 18000) },
-            { 3, (500, 8000) },
-            { 4, (2000, 10000) },
-            { 5, (2000, 160000) }
-        };
-
-        SelectionPrompt<string> timelessJewelTypeSelectionPrompt = new SelectionPrompt<string>()
-            .Title("[green]Timeless Jewel Type[/]:")
-            .AddChoices(timelessJewelTypes.Values.ToArray());
-
-        string timelessJewelTypeInput = AnsiConsole.Prompt(timelessJewelTypeSelectionPrompt);
-
-        AnsiConsole.MarkupLine($"[green]Timeless Jewel Type[/]: {timelessJewelTypeInput}");
-
-        uint alternateTreeVersionIndex = timelessJewelTypes
-            .First(q => (q.Value == timelessJewelTypeInput))
-            .Key;
+        uint alternateTreeVersionIndex = 5;
 
         AlternateTreeVersion alternateTreeVersion = DataManager.AlternateTreeVersions
             .First(q => (q.Index == alternateTreeVersionIndex));
 
-        SelectionPrompt<string> timelessJewelConquerorSelectionPrompt = new SelectionPrompt<string>()
-            .Title("[green] Timeless Jewel Conqueror[/]:")
-            .AddChoices(timelessJewelConquerors[alternateTreeVersionIndex].Keys.ToArray());
-
-        string timelessJewelConquerorInput = AnsiConsole.Prompt(timelessJewelConquerorSelectionPrompt);
-
-        AnsiConsole.MarkupLine($"[green]Timeless Jewel Conqueror[/]: {timelessJewelConquerorInput}");
-
-        TimelessJewelConqueror timelessJewelConqueror = timelessJewelConquerors[alternateTreeVersionIndex]
-            .First(q => (q.Key == timelessJewelConquerorInput))
-            .Value;
-
-        TextPrompt<uint> timelessJewelSeedTextPrompt = new TextPrompt<uint>($"[green]Timeless Jewel Seed ({timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed} - {timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed})[/]:")
-            .Validate((uint input) =>
-            {
-                if ((input >= timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed) &&
-                    (input <= timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed))
-                {
-                    return ValidationResult.Success();
-                }
-
-                return ValidationResult.Error($"[red]Error[/]: The [yellow]timeless jewel seed[/] must be between {timelessJewelSeedRanges[alternateTreeVersionIndex].minimumSeed} and {timelessJewelSeedRanges[alternateTreeVersionIndex].maximumSeed}.");
-            });
-
-        uint timelessJewelSeed = AnsiConsole.Prompt(timelessJewelSeedTextPrompt);
+        TimelessJewelConqueror timelessJewelConqueror = new TimelessJewelConqueror(1, 0);
 
         return new TimelessJewel(alternateTreeVersion, timelessJewelConqueror, timelessJewelSeed);
     }
 
-    private static void PrintAlternatePassiveAdditionInformations(IReadOnlyCollection<AlternatePassiveAdditionInformation> alternatePassiveAdditionInformations)
-    {
-        ArgumentNullException.ThrowIfNull(alternatePassiveAdditionInformations, nameof(alternatePassiveAdditionInformations));
-
-        foreach (AlternatePassiveAdditionInformation alternatePassiveAdditionInformation in alternatePassiveAdditionInformations)
-        {
-            AnsiConsole.MarkupLine($"\t[green]Addition[/]: [yellow]{alternatePassiveAdditionInformation.AlternatePassiveAddition.Identifier}[/]");
-
-            for (int i = 0; i < alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.Count; i++)
+    private static uint GetSeedFromConsole() {
+        TextPrompt<uint> timelessJewelSeedTextPrompt = new TextPrompt<uint>($"[green]Timeless Jewel Seed (2000 - 160000)[/]:")
+            .Validate((uint input) =>
             {
-                uint statIndex = alternatePassiveAdditionInformation.AlternatePassiveAddition.StatIndices.ElementAt(i);
-                uint statRoll = alternatePassiveAdditionInformation.StatRolls.ElementAt(i).Value;
+                if ((input >= 2000) &&
+                    (input <= 160000))
+                {
+                    return ValidationResult.Success();
+                }
 
-                AnsiConsole.MarkupLine($"\t\tStat [yellow]{i}[/] | [yellow]{DataManager.GetStatTextByIndex(statIndex)}[/] (Identifier: [yellow]{DataManager.GetStatIdentifierByIndex(statIndex)}[/], Index: [yellow]{statIndex}[/]), Roll: [yellow]{statRoll}[/]");
-            }
-        }
+                return ValidationResult.Error($"[red]Error[/]: The [yellow]timeless jewel seed[/] must be between {2000} and {160000}.");
+            });
+
+        return AnsiConsole.Prompt(timelessJewelSeedTextPrompt);
     }
+
+    private static String GetJewelLocationFromConsole() {
+        String locations = String.Join(", ", keystones.Keys);
+        TextPrompt<String> timelessJewelLocationPrompt = new TextPrompt<String>($"[green]Timeless Jewel Location (or All)[/]\n({locations})")
+            .Validate((String input) =>
+            {
+                if (keystones.Keys.Contains(input)) {
+                    return ValidationResult.Success();
+                }
+
+                if (input.Equals("All")) {
+                    return ValidationResult.Success();
+                }
+
+                return ValidationResult.Error($"[red]Error[/]: Enter a keystone (or null)");
+            });
+
+        return AnsiConsole.Prompt(timelessJewelLocationPrompt);
+    }
+
+    private static void ComputeSkillTreeTransformations(String[] skills, uint timelessJewelSeed) {
+        for (int skillindex = 0; skillindex < skills.Length; skillindex++) {
+            TimelessJewel timelessJewel = GetTimelessJewelFromInput(timelessJewelSeed);
+
+            AlternateTreeManager alternateTreeManager = new AlternateTreeManager(DataManager.GetPassiveSkillByFuzzyValue(skills[skillindex]), timelessJewel);
+
+            AlternatePassiveSkillInformation alternatePassiveSkillInformation = alternateTreeManager.ReplacePassiveSkill();
+
+            AnsiConsole.MarkupLine(skills[skillindex] + ": [cyan]" + alternatePassiveSkillInformation.AlternatePassiveSkill.Name + "[/]");  
+        }      
+    }
+
+    private static Dictionary<String, String[]> keystones = new Dictionary<String, String[]>() {
+            {"MoM", new String[]{"Anointed Flesh", "Asylum", "Essence Infusion", "Arcanist's Dominion", "Annihilation", "Enduring Bond", "Essence Extraction", "Quick Recovery"}},
+            {"ZO", new String[]{"Agility", "Might", "Arcane Guarding", "Serpent Stance", "Fearsome Force", "Blunt Trauma", "Hex Master", "Death Attunement", "Enigmatic Reach", "Prism Weave", "Acrimony", "Unnatural Calm", "Corruption"}},
+            {"Witch", new String[]{"Breath of Flames", "Heart of Thunder", "Breath of Lightning", "Breath of Rime", "Heart of Ice", "Golem Commander", "Skittering Runes", "Presage", "Discord Artisan", "Infused Flesh", "Cruel Preparation", "Deep Thoughts", "Instability", "Essence Surge", "Wandslinger", "Prodigal Perfection", "Mystic Bulwark", "Enigmatic Defence", "Frost Walker", "Lord of the Dead", "Arcane Will", "Mental Rapidity"}},
+            {"EB", new String[]{"Utmost Intellect", "Elder Power", "Disintegration", "Fusillade", "Arcing Blows", "Whispers of Doom", "Influence", "Mysticism", "Efficient Explosives", "Light Eater", "searing Heat", "Alacrity", "Successive Detonations"}},
+            {"Pain Attunement", new String[]{"Grave Intentions", "Deep Wisdom", "Nimbleness", "Vampirism", "Undertaker", "Tolerance", "Melding"}},
+            {"Shadow", new String[]{"Soul Thief", "Coldhearted Calculation", "Elemental Focus", "Saboteur", "Resourcefulness", "Fangs of the Viper", "Will of Blades", "Sleight of Hand", "Blood Drinker", "Master of Blades", "Clever Thief", "Depth Perception", "Claws of the Magpie", "Claws of the Hawk", "Backstabbing", "Flaying", "One With Evil", "Mind Drinker", "Infused", "Frenetic", "From the Shadows"}},
+            {"Supreme Ego", new String[]{"Wasting", "Adder's Touch", "Void Barrier", "Revenge of the Hunted", "Replenishing Remedies", "Ballistics", "Charisma", "Overcharged", "True Strike", "Dire Torment", "Taste for Blood", "Master Sapper"}},
+            {"Ranger", new String[]{"Silent Steps", "Careful Conservationist", "Inveterate", "Trick Shot", "King of the Hill", "Master Fletcher", "Heartseeker", "Survivalist", "Aspect of the Lynx", "Weapon Artistry", "Quickstep", "Intuition", "Fervour", "Acuity", "Herbalism", "Winter Spirit", "Flash Freeze", "Swift Venoms"}},
+            {"Point Blank", new String[]{"Thick Skin", "Longshot", "Twin Terrors", "Utmost Swiftness", "Fangs of Frost", "Dazzling Strikes", "Feller of Foes", "Blade Barrier", "Marked for Death", "Bladedancer"}},
+            {"EE", new String[]{"Profane Chemistry", "Crystal Skin", "Avatar of the Hunt", "Weathered Hunter", "Burning Brutality", "Gladiator's Perseverance", "Deadly Draw", "Art of the Gladiator"}},
+            {"Duelist", new String[]{"Master of the Arena", "Mana Flows", "Bravery", "Art of the Gladiator", "Defiance", "Dervish", "Destroyer", "Fury Bolts", "Measured Fury", "Vigour", "Savagery", "Titanic Impacts", "Ribcage Crusher", "Revelry", "Cloth and Chain", "Golem's Blood", "Assured Strike", "Deflection", "Dirty Techniques", "Adamant", "Surveillance", "Testudo"}},
+            {"CtA", new String[]{"Steadfast", "Tribal Fury", "Lava Lash", "Blade of Cunning", "Bastion Breaker", "Executioner"}},
+            {"Unwavering", new String[]{"Martial Experience", "Command of Steel", "Prismatic Skin", "Admonisher", "Eagle Eye", "Bloodletting"}},
+            {"Marauder", new String[]{"Disemboweling", "Hearty", "Cleaving", "Slaughter", "Savage Wounds", "Barbarism", "Warrior Training", "Strong Arm", "Stamina", "Juggernaut", "Cannibalistic Rite", "Aggressive Bastion", "Lust for Carnage", "Robust", "Diamond Skin", "Spiked Bulwark"}},
+            {"Eternal Youth", new String[]{"Steelwood Stance", "Sanctity", "Powerful Bond", "Sanctuary", "Expertise", "Ancestral Knowledge", "Deep Breaths", "Blacksmith's Clout", "Dynamo", "Gravepact", "Combat Stamina", ""}},
+            {"Templar", new String[]{"Arcane Capacitor", "Runesmith", "Faith and Steel", "Divine Wrath", "Divine Judgement", "Divine Fury", "Smashing Strikes", "Devotion", "Sanctum of Thought", "Endurance", "Overcharge", "Light of Divinity", "Holy Dominion", "Divine Fervour"}},
+            {"ScionTopLeft", new String[]{"Forethought", "Decay Ward", "Dreamer", "Path of the Savant", "Potency of Will", "Ash, Frost and Storm", "Shaper", "Inspiring Bond", "Veteran Soldier", "Relentless", "Malicious Intent", "Constitution", "Path of the Warrior", "Totemic Zeal", "Foresight"}},
+            {"ScionTopRight", new String[]{"Foresight", "Thrill Killer", "Destructive Apparatus", "Path of the Savant", "Inspiring Bond", "Leadership", "Harrier", "True Strike", "Hired Killer", "Exceptional Performance", "Window of Opportunity", "Path of the Hunter", "Reflexes", "Potency of Will"}},
+            {"ScionDuelist", new String[]{"Malicious Intent", "Path of the Warrior", "Constitution", "Hired Killer", "Reflexes", "Path of the Hunter", "Totemic Zeal", "Exceptional Performance", "Window of Opportunity", "Sentinel", "Battle Rouse", "Arcane Chemistry"}}
+        };
 
     private static void WaitForExit()
     {
